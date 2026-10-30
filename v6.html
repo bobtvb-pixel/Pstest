@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS4 | Diagnóstico V6</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:24px;background:radial-gradient(circle at 50% 30%,#1246c7,#06174c 78%);color:#d9f6ff;font:18px Arial,sans-serif}main{max-width:1100px;margin:auto}.panel{border:2px solid #2767ff;border-radius:18px;background:rgba(4,35,125,.86);padding:24px;box-shadow:0 0 32px #0759e455}h1{margin:0 0 12px;font-size:30px}p{line-height:1.5}button{font:inherit;padding:13px 18px;margin:6px 8px 8px 0;border:1px solid #7ccfff;border-radius:9px;background:#0767d5;color:#fff;cursor:pointer}button:disabled{opacity:.45}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:16px/1.55 monospace;background:#031b59;padding:18px;border-radius:10px;min-height:180px}small{color:#a9d6f9}
+</style>
+</head>
+<body><main><section class="panel"><h1>PS4 | Diagnóstico V6</h1><p>Compatibilidade, repetibilidade e estabilidade de APIs JavaScript. Sem exploit ou payload.</p><button id="run">INICIAR DIAGNÓSTICO V6</button><button id="export" disabled>EXPORTAR JSON</button><pre id="log">Pronto para iniciar.</pre><small>Alocação limitada a 1 MiB por teste. Nenhum acesso à memória nativa.</small></section></main>
+<script>
+(function(){
+'use strict';
+var log=document.getElementById('log'),run=document.getElementById('run'),exportButton=document.getElementById('export'),report=null;
+function write(s){log.textContent+=s+'\n';}
+function check(name,fn){var start=Date.now();try{var ok=fn()===true;report.tests.push({name:name,status:ok?'OK':'FALHA',elapsed_ms:Date.now()-start});write(name+': '+(ok?'OK':'FALHA'));}catch(e){report.tests.push({name:name,status:'ERRO',error:String(e),elapsed_ms:Date.now()-start});write(name+': ERRO '+String(e));}}
+function finish(){write('--- Diagnóstico concluído. Nenhuma exploração executada. ---');run.disabled=false;exportButton.disabled=false;}
+run.onclick=function(){run.disabled=true;exportButton.disabled=true;log.textContent='';report={title:'PS4 Diagnóstico V6',timestamp:new Date().toISOString(),url:location.href,userAgent:navigator.userAgent,features:{},tests:[]};
+write(report.title);write('Data: '+report.timestamp);write('URL: '+report.url);write('User-Agent: '+report.userAgent);
+write('--- Ambiente ---');['WebAssembly','SharedArrayBuffer','Atomics','Worker','fetch','Promise','BigInt','MessageChannel'].forEach(function(k){report.features[k]=typeof window[k];write(k+': '+report.features[k]);});
+write('--- JavaScript Engine ---');
+check('ArrayBuffer / DataView',function(){var b=new ArrayBuffer(16),v=new DataView(b);v.setUint32(0,0x12345678,true);return v.getUint32(0,true)===0x12345678;});
+check('TypedArray',function(){var a=new Uint8Array([1,2,3,4]);return a.reduce(function(x,y){return x+y;},0)===10;});
+check('BigInt 64 bits',function(){return typeof BigInt==='function'&&(BigInt('9007199254740993')-BigInt('9007199254740992'))===BigInt(1);});
+check('JSON',function(){return JSON.parse(JSON.stringify({x:[1,2,3]})).x[2]===3;});
+check('Map / Set',function(){var m=new Map(),s=new Set([1,1,2]);m.set('a',3);return m.get('a')===3&&s.size===2;});
+check('Conversões numéricas',function(){return Number('12')===12&&Number.isNaN(Number('x'))&&Object.is(-0,-0);});
+check('Tratamento de exceções',function(){try{throw new Error('teste');}catch(e){return e.message==='teste';}});
+write('--- Repetibilidade ---');report.benchmark=[];for(var j=0;j<3;j++){var t=Date.now(),sum=0;for(var i=0;i<20000;i++)sum+=i%17;var ms=Date.now()-t;report.benchmark.push({round:j+1,elapsed_ms:ms,checksum:sum});write('Rodada '+(j+1)+': '+ms+' ms; soma '+sum);}
+write('--- Memória JavaScript ---');check('Alocação 1 MiB',function(){var b=new Uint8Array(1024*1024);b[0]=7;b[b.length-1]=9;return b[0]===7&&b[b.length-1]===9;});
+write('--- Assíncrono ---');var timerStart=Date.now();setTimeout(function(){report.timer_ms=Date.now()-timerStart;write('Timer: '+report.timer_ms+' ms');if(typeof Worker!=='function'||typeof Blob!=='function'||!URL.createObjectURL){write('Web Worker: indisponível');report.worker={status:'INDISPONÍVEL'};finish();return;}var worker=null,url=null,done=false,start=Date.now();function complete(status){if(done)return;done=true;report.worker={status:status,elapsed_ms:Date.now()-start};write('Web Worker: '+status+' ('+report.worker.elapsed_ms+' ms)');if(worker)worker.terminate();if(url)URL.revokeObjectURL(url);finish();}try{url=URL.createObjectURL(new Blob(['onmessage=function(e){postMessage(e.data+1)}'],{type:'application/javascript'}));worker=new Worker(url);worker.onmessage=function(e){complete(e.data===42?'OK':'FALHA');};worker.onerror=function(){complete('ERRO');};worker.postMessage(41);setTimeout(function(){complete('TIMEOUT');},2500);}catch(e){complete('ERRO: '+String(e));}},50);
+};
+exportButton.onclick=function(){if(!report)return;var data=JSON.stringify(report,null,2),blob=new Blob([data],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ps4-diagnostico-v6.json';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url);},1000);};
+})();
+</script></body></html>
